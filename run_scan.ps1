@@ -3,3 +3,4 @@ param(
     [string[]]$Arguments
 )
 python -m dns_recon.cli @Arguments
+

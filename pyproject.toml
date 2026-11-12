@@ -11,10 +11,13 @@ requires-python = ">=3.10"
 dependencies = [
     "dnspython>=2.6.0",
     "rich>=13.0.0",
+    "fastapi>=0.110.0",
+    "uvicorn>=0.28.0",
 ]
 
 [project.scripts]
 dns-recon = "dns_recon.cli:main"
+dns-recon-web = "dns_recon.web:main"
 
 [project.optional-dependencies]
 dev = [

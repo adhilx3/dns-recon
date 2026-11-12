@@ -46,28 +46,42 @@ pip install -e ".[dev]"
 
 ## 🛠️ Usage
 
-### 1. Basic Interactive Scan
+### 1. Interactive Web Dashboard & GUI (Recommended)
+Launch the modern browser dashboard with live visual score gauges and one-click report downloads:
+
+```bash
+dns-recon-web
+# or
+.\run_web.ps1
+# or
+run_web.bat
+```
+*Automatically opens `http://127.0.0.1:8000` in your default browser.*
+
+---
+
+### 2. Terminal CLI Scan
 Audit any domain with rich terminal rendering:
 
 ```bash
 dns-recon example.com
 ```
 
-### 2. Export Detailed Markdown Report
+### 3. Export Detailed Markdown Report
 Generate a Markdown security audit report with remediation steps:
 
 ```bash
 dns-recon example.com -o audit_report.md
 ```
 
-### 3. Machine-Readable JSON Output
+### 4. Machine-Readable JSON Output
 Integrate directly with CI/CD or security pipelines:
 
 ```bash
 dns-recon example.com --json | jq .
 ```
 
-### 4. Custom Nameserver & Specific DKIM Selectors
+### 5. Custom Nameserver & Specific DKIM Selectors
 Query a specific DNS resolver and probe custom DKIM selectors:
 
 ```bash
