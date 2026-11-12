@@ -491,6 +491,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
 
 @app.get("/", response_class=HTMLResponse)
+@app.get("/api/index", response_class=HTMLResponse)
 def index() -> str:
     """Serve the Web Dashboard Single Page Application."""
     return HTML_TEMPLATE
