@@ -1,9 +1,12 @@
 # dns-recon 🛡️
 > **DNS Health, Security Hygiene & Email Spoofing Reconnaissance Scanner**
 
+[![Live Demo](https://img.shields.io/badge/demo-dns--recon.vercel.app-blue?style=flat&logo=vercel)](https://dns-recon.vercel.app)
 [![Python Version](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://python.org)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-41%20passing-brightgreen.svg)](tests/)
+[![Tests](https://img.shields.io/badge/tests-45%20passing-brightgreen.svg)](tests/)
+
+🌐 **Live Web Application:** [https://dns-recon.vercel.app](https://dns-recon.vercel.app)
 
 `dns-recon` is a defensive reconnaissance and security auditing tool designed to audit any target domain for email spoofing susceptibility (SPF, DMARC, DKIM) and critical DNS hygiene issues (DNSSEC, nameserver redundancy, open AXFR zone transfers, MX configurations).
 
