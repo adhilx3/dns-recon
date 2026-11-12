@@ -207,3 +207,4 @@ class AssessmentReport:
             "mx": self.mx.to_dict(),
             "all_findings": [f.to_dict() for f in self.all_findings],
         }
+

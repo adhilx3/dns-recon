@@ -328,3 +328,4 @@ Verify output tables, score, and badges display properly.
 git add README.md example_report.md
 git commit -m "docs: add README and sample execution report"
 ```
+

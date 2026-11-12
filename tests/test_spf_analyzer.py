@@ -107,3 +107,4 @@ def test_circular_include_protection():
     result = analyze_spf(mock_client, "example.com")
     assert result.is_valid is True
     assert result.lookup_count == 2
+

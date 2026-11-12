@@ -84,3 +84,4 @@ def test_mx_records():
     assert len(result.records) == 2
     assert result.records[0].exchange == "mail1.example.com."
     assert result.records[0].preference == 10
+

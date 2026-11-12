@@ -27,3 +27,4 @@
 - Primary dependencies: `dnspython>=2.6.0`, `rich>=13.0.0`.
 - Standalone runnable via `python -m dns_recon` or installed CLI entry point `dns-recon`.
 - Test suite with 100% mocked DNS responses for fast, deterministic, network-independent test runs.
+

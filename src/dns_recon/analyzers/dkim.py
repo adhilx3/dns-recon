@@ -148,3 +148,4 @@ def analyze_dkim(
         found_selectors=found_selectors,
         findings=findings,
     )
+

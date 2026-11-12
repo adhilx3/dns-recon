@@ -63,3 +63,4 @@ def analyze_dnssec(client: DNSClient, domain: str) -> DNSSECResult:
         ds_count=len(ds_records),
         findings=findings,
     )
+

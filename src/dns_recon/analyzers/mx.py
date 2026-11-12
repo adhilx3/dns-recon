@@ -46,3 +46,4 @@ def analyze_mx(client: DNSClient, domain: str) -> MXResult:
         )
 
     return MXResult(records=records, findings=findings)
+

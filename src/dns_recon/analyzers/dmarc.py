@@ -151,3 +151,4 @@ def analyze_dmarc(client: DNSClient, domain: str) -> DMARCResult:
         ruf=ruf,
         findings=findings,
     )
+

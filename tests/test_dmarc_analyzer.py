@@ -83,3 +83,4 @@ def test_dmarc_subdomain_policy_none():
     result = analyze_dmarc(mock_client, "example.com")
     assert result.subdomain_policy == "none"
     assert any(f.severity == Severity.HIGH and "sp=none" in f.title for f in result.findings)
+

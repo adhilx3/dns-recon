@@ -75,3 +75,4 @@ def analyze_nameservers(client: DNSClient, domain: str) -> NameserverResult:
         axfr_checks=axfr_checks,
         findings=findings,
     )
+

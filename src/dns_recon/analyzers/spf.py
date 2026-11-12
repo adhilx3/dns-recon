@@ -190,3 +190,4 @@ def analyze_spf(client: DNSClient, domain: str) -> SPFResult:
         includes=includes,
         findings=findings,
     )
+

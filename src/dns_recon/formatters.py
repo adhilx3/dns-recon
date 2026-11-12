@@ -218,3 +218,4 @@ def format_console(report: AssessmentReport, console: Console | None = None) -> 
         console.print(findings_table)
     else:
         console.print("[green]✔ No security warnings or misconfigurations identified.[/green]")
+
