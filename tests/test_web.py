@@ -71,3 +71,4 @@ def test_api_report_download():
         assert response.status_code == 200
         assert "attachment; filename=\"example.com_dns_security_report.md\"" in response.headers["content-disposition"]
         assert "# DNS Health & Email Spoofing Assessment" in response.text
+

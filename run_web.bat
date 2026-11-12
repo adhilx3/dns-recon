@@ -1,3 +1,4 @@
 @echo off
 echo Starting DNS Recon Web Dashboard...
 python -m dns_recon.web %*
+
