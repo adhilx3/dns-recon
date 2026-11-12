@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DNS Recon & Email Spoofing Scanner</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: { 500: '#3b82f6', 600: '#2563eb', 700: '#1d4ed8' },
+            slate: { 850: '#151e2e', 900: '#0f172a', 950: '#020617' }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    .gauge-circle {
+      transition: stroke-dashoffset 1s ease-in-out;
+      transform: rotate(-90deg);
+      transform-origin: 50% 50%;
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans antialiased">
+  
+  <!-- Navigation Header -->
+  <header class="border-b border-slate-800 bg-slate-900/60 backdrop-blur sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center shadow-lg shadow-blue-500/20">
+          <i class="fa-solid fa-shield-halved text-white text-lg"></i>
+        </div>
+        <div>
+          <span class="font-bold text-lg tracking-tight bg-gradient-to-r from-blue-400 to-indigo-300 bg-clip-text text-transparent">DNS Recon</span>
+          <span class="text-xs px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20 ml-2 font-mono">v0.1.0</span>
+        </div>
+      </div>
+      <div class="flex items-center space-x-3">
+        <span class="text-xs text-slate-400"><i class="fa-solid fa-bolt text-amber-400 mr-1"></i>Defensive Recon Scanner</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero & Input Form -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+    <div class="text-center max-w-2xl mx-auto space-y-3">
+      <h1 class="text-3xl sm:text-4xl font-extrabold tracking-tight text-white">
+        DNS Health & Email Spoofing Scanner
+      </h1>
+      <p class="text-slate-400 text-sm sm:text-base">
+        Inspect SPF, DMARC, DKIM, DNSSEC, Nameserver AXFR zone transfers, and email spoofing resilience in seconds.
+      </p>
+      
+      <!-- Input Group -->
+      <form id="scanForm" class="pt-2">
+        <div class="relative flex items-center shadow-2xl rounded-2xl bg-slate-900 border border-slate-800 p-1.5 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all">
+          <i class="fa-solid fa-globe text-slate-500 ml-4 text-lg"></i>
+          <input 
+            type="text" 
+            id="domainInput" 
+            placeholder="Enter domain (e.g. cloudflare.com, google.com)" 
+            required 
+            class="w-full bg-transparent border-0 text-white placeholder-slate-500 px-4 py-3 text-base focus:outline-none"
+          />
+          <button 
+            type="submit" 
+            id="scanBtn"
+            class="bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-semibold px-6 py-3 rounded-xl transition flex items-center space-x-2 whitespace-nowrap shadow-md shadow-blue-600/30"
+          >
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <span>Scan Domain</span>
+          </button>
+        </div>
+      </form>
+
+      <!-- Quick Test Pills -->
+      <div class="flex flex-wrap items-center justify-center gap-2 pt-2 text-xs text-slate-400">
+        <span>Quick test:</span>
+        <button onclick="quickScan('cloudflare.com')" class="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 transition">cloudflare.com</button>
+        <button onclick="quickScan('github.com')" class="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 transition">github.com</button>
+        <button onclick="quickScan('google.com')" class="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 transition">google.com</button>
+      </div>
+    </div>
+
+    <!-- Loading State -->
+    <div id="loadingState" class="hidden text-center py-16 space-y-4">
+      <div class="inline-block animate-spin rounded-full h-12 w-12 border-4 border-slate-800 border-t-blue-500"></div>
+      <p class="text-slate-300 font-medium text-lg">Querying authoritative nameservers & auditing records...</p>
+      <p class="text-slate-500 text-sm">Testing SPF lookups, DMARC alignment, DKIM selectors, and AXFR zone transfer.</p>
+    </div>
+
+    <!-- Error State -->
+    <div id="errorState" class="hidden max-w-xl mx-auto p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm flex items-start space-x-3">
+      <i class="fa-solid fa-triangle-exclamation text-lg mt-0.5"></i>
+      <div>
+        <h4 class="font-bold">Scan Error</h4>
+        <p id="errorMessage" class="text-red-300 mt-1"></p>
+      </div>
+    </div>
+
+    <!-- Scan Results Container -->
+    <div id="resultsContainer" class="hidden space-y-8">
+      
+      <!-- Top Overview Bar -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- Score Card & Gauge -->
+        <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 flex items-center justify-between shadow-xl">
+          <div class="space-y-1">
+            <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Security Score</span>
+            <div class="flex items-baseline space-x-2">
+              <span id="scoreNumber" class="text-4xl font-extrabold text-white">0</span>
+              <span class="text-slate-500 text-base">/ 100</span>
+            </div>
+            <div id="gradeBadge" class="inline-block px-3 py-1 rounded-full text-xs font-bold mt-2">
+              Grade: -
+            </div>
+            <p id="targetDomainDisplay" class="text-xs text-slate-400 font-mono pt-1"></p>
+          </div>
+          
+          <!-- Circular Gauge -->
+          <div class="relative w-28 h-28 flex items-center justify-center">
+            <svg class="w-full h-full" viewBox="0 0 100 100">
+              <circle class="text-slate-800" stroke-width="8" stroke="currentColor" fill="transparent" r="40" cx="50" cy="50" />
+              <circle id="gaugeProgress" class="gauge-circle" stroke-width="8" stroke-dasharray="251.2" stroke-dashoffset="251.2" stroke-linecap="round" stroke="#3b82f6" fill="transparent" r="40" cx="50" cy="50" />
+            </svg>
+            <span id="gradeDisplay" class="absolute text-2xl font-black text-white">A</span>
+          </div>
+        </div>
+
+        <!-- Quick Summary Stats -->
+        <div class="lg:col-span-2 bg-slate-900/80 border border-slate-800 rounded-2xl p-6 flex flex-col justify-between shadow-xl">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+            <div>
+              <h3 class="font-bold text-white text-base">Executive Assessment</h3>
+              <p class="text-xs text-slate-400" id="scanTimestamp">Scan Completed</p>
+            </div>
+            <div class="flex space-x-2">
+              <button onclick="downloadReport('md')" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-medium text-slate-200 border border-slate-700 transition flex items-center space-x-1.5">
+                <i class="fa-solid fa-file-arrow-down text-blue-400"></i>
+                <span>Download Report</span>
+              </button>
+              <button onclick="downloadReport('json')" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-medium text-slate-200 border border-slate-700 transition flex items-center space-x-1.5">
+                <i class="fa-solid fa-code text-indigo-400"></i>
+                <span>JSON</span>
+              </button>
+            </div>
+          </div>
+          
+          <!-- Key Indicators Grid -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4">
+            <div class="bg-slate-950/60 p-3 rounded-xl border border-slate-800/80">
+              <span class="text-xs text-slate-500 block">DMARC Policy</span>
+              <span id="quickDmarc" class="text-sm font-bold text-white block mt-1">-</span>
+            </div>
+            <div class="bg-slate-950/60 p-3 rounded-xl border border-slate-800/80">
+              <span class="text-xs text-slate-500 block">SPF Qualifier</span>
+              <span id="quickSpf" class="text-sm font-bold text-white block mt-1">-</span>
+            </div>
+            <div class="bg-slate-950/60 p-3 rounded-xl border border-slate-800/80">
+              <span class="text-xs text-slate-500 block">DNSSEC</span>
+              <span id="quickDnssec" class="text-sm font-bold text-white block mt-1">-</span>
+            </div>
+            <div class="bg-slate-950/60 p-3 rounded-xl border border-slate-800/80">
+              <span class="text-xs text-slate-500 block">AXFR Zone Transfer</span>
+              <span id="quickAxfr" class="text-sm font-bold text-white block mt-1">-</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Protocol Cards Grid (6 Modules) -->
+      <div>
+        <h3 class="text-lg font-bold text-white mb-4 flex items-center space-x-2">
+          <i class="fa-solid fa-cubes text-blue-400"></i>
+          <span>Protocol Security Audits</span>
+        </h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5" id="protocolCards">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+
+      <!-- Security Findings & Remediation Advice -->
+      <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+          <h3 class="text-lg font-bold text-white flex items-center space-x-2">
+            <i class="fa-solid fa-list-check text-indigo-400"></i>
+            <span>Findings & Actionable Remediation (<span id="findingsCount">0</span>)</span>
+          </h3>
+        </div>
+        <div id="findingsList" class="space-y-3">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+
+      <!-- Published DNS Records (Accordion) -->
+      <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-3">
+        <h3 class="text-lg font-bold text-white flex items-center space-x-2">
+          <i class="fa-solid fa-terminal text-emerald-400"></i>
+          <span>Raw Published Records</span>
+        </h3>
+        <div id="rawRecords" class="bg-slate-950 p-4 rounded-xl border border-slate-800/80 font-mono text-xs text-slate-300 overflow-x-auto space-y-1">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <script>
+    let currentReport = null;
+
+    async function executeScan(domain) {
+      if (!domain) return;
+      
+      const form = document.getElementById('scanForm');
+      const scanBtn = document.getElementById('scanBtn');
+      const loading = document.getElementById('loadingState');
+      const errorDiv = document.getElementById('errorState');
+      const results = document.getElementById('resultsContainer');
+
+      errorDiv.classList.add('hidden');
+      results.classList.add('hidden');
+      loading.classList.remove('hidden');
+      scanBtn.disabled = true;
+      scanBtn.classList.add('opacity-50');
+
+      try {
+        const response = await fetch(`/api/scan?domain=${encodeURIComponent(domain)}`);
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.detail || data.error || 'Failed to scan domain');
+        }
+
+        currentReport = data;
+        renderReport(data);
+        results.classList.remove('hidden');
+      } catch (err) {
+        document.getElementById('errorMessage').textContent = err.message;
+        errorDiv.classList.remove('hidden');
+      } finally {
+        loading.classList.add('hidden');
+        scanBtn.disabled = false;
+        scanBtn.classList.remove('opacity-50');
+      }
+    }
+
+    function quickScan(domain) {
+      document.getElementById('domainInput').value = domain;
+      executeScan(domain);
+    }
+
+    document.getElementById('scanForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const domain = document.getElementById('domainInput').value.trim();
+      executeScan(domain);
+    });
+
+    function renderReport(report) {
+      document.getElementById('targetDomainDisplay').textContent = report.domain;
+      document.getElementById('scoreNumber').textContent = report.score;
+      document.getElementById('gradeDisplay').textContent = report.grade;
+      document.getElementById('scanTimestamp').textContent = `Audited: ${report.timestamp.replace('T', ' ').substring(0, 19)} UTC`;
+      document.getElementById('findingsCount').textContent = report.all_findings.length;
+
+      // Color badge for grade
+      const gradeBadge = document.getElementById('gradeBadge');
+      const gauge = document.getElementById('gaugeProgress');
+      let colorClass = 'bg-green-500/10 text-green-400 border border-green-500/20';
+      let gaugeColor = '#22c55e';
+
+      if (report.score < 60) {
+        colorClass = 'bg-red-500/10 text-red-400 border border-red-500/20';
+        gaugeColor = '#ef4444';
+      } else if (report.score < 85) {
+        colorClass = 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20';
+        gaugeColor = '#eab308';
+      }
+
+      gradeBadge.className = `inline-block px-3 py-1 rounded-full text-xs font-bold mt-2 ${colorClass}`;
+      gradeBadge.textContent = `Grade: ${report.grade}`;
+
+      // Animate circular gauge
+      const circumference = 251.2;
+      const offset = circumference - (report.score / 100) * circumference;
+      gauge.style.stroke = gaugeColor;
+      gauge.style.strokeDashoffset = offset;
+
+      // Quick summary pills
+      document.getElementById('quickDmarc').textContent = report.dmarc.policy ? `p=${report.dmarc.policy}` : 'Missing';
+      document.getElementById('quickSpf').textContent = report.spf.all_mechanism || (report.spf.is_valid ? 'Valid' : 'Missing');
+      document.getElementById('quickDnssec').textContent = report.dnssec.is_enabled ? 'Enabled' : 'Disabled';
+      
+      const axfrVuln = report.nameservers.axfr_checks.some(c => c.vulnerable);
+      document.getElementById('quickAxfr').textContent = axfrVuln ? 'VULNERABLE' : 'Secure';
+      document.getElementById('quickAxfr').className = axfrVuln ? 'text-sm font-bold text-red-400 block mt-1' : 'text-sm font-bold text-green-400 block mt-1';
+
+      // Render Protocol Modules Cards
+      renderProtocolCards(report);
+
+      // Render Findings
+      renderFindings(report.all_findings);
+
+      // Render Raw Records
+      renderRawRecords(report);
+    }
+
+    function renderProtocolCards(report) {
+      const container = document.getElementById('protocolCards');
+      container.innerHTML = '';
+
+      const modules = [
+        {
+          title: 'SPF (RFC 7208)',
+          icon: 'fa-envelope-open-text',
+          status: report.spf.is_valid ? (report.spf.all_mechanism === '-all' ? 'STRICT' : 'PERMISSIVE') : 'MISSING',
+          badgeClass: report.spf.is_valid ? (report.spf.all_mechanism === '-all' ? 'text-green-400 bg-green-500/10' : 'text-yellow-400 bg-yellow-500/10') : 'text-red-400 bg-red-500/10',
+          desc: report.spf.record ? `Uses <b>${report.spf.all_mechanism || 'none'}</b> with ${report.spf.lookup_count}/10 DNS lookups.` : 'No SPF TXT record published.',
+          extra: report.spf.includes.length ? `Includes: ${report.spf.includes.slice(0, 3).join(', ')}${report.spf.includes.length > 3 ? '...' : ''}` : 'No nested includes'
+        },
+        {
+          title: 'DMARC (RFC 7489)',
+          icon: 'fa-shield',
+          status: report.dmarc.policy === 'reject' ? 'REJECT (MAX)' : (report.dmarc.policy === 'quarantine' ? 'QUARANTINE' : 'MONITORING'),
+          badgeClass: report.dmarc.policy === 'reject' ? 'text-green-400 bg-green-500/10' : (report.dmarc.policy === 'quarantine' ? 'text-yellow-400 bg-yellow-500/10' : 'text-red-400 bg-red-500/10'),
+          desc: report.dmarc.record ? `Policy: <b>p=${report.dmarc.policy}</b> applied to ${report.dmarc.pct}% of incoming mail.` : 'No DMARC record found.',
+          extra: report.dmarc.rua.length ? `RUA: ${report.dmarc.rua[0]}` : 'No aggregate reporting (rua) defined'
+        },
+        {
+          title: 'DKIM Selectors',
+          icon: 'fa-key',
+          status: report.dkim.found_selectors.length ? `${report.dkim.found_selectors.length} DISCOVERED` : 'UNVERIFIED',
+          badgeClass: report.dkim.found_selectors.length ? 'text-green-400 bg-green-500/10' : 'text-slate-400 bg-slate-800',
+          desc: report.dkim.found_selectors.length ? `Selectors: ${report.dkim.found_selectors.map(s => s.selector + ' (' + (s.key_size || '?') + '-bit)').join(', ')}` : 'None of 14 common selectors were found.',
+          extra: 'Test specific selectors with custom scan'
+        },
+        {
+          title: 'DNSSEC Validation',
+          icon: 'fa-lock',
+          status: report.dnssec.is_enabled ? 'SECURE' : 'DISABLED',
+          badgeClass: report.dnssec.is_enabled ? 'text-green-400 bg-green-500/10' : 'text-yellow-400 bg-yellow-500/10',
+          desc: report.dnssec.is_enabled ? `Zone is signed with ${report.dnssec.dnskey_count} DNSKEY and ${report.dnssec.ds_count} DS records.` : 'Domain does not use cryptographic signing.',
+          extra: report.dnssec.is_enabled ? 'Cryptographic chain of trust verified' : 'Vulnerable to cache poisoning & spoofing'
+        },
+        {
+          title: 'Nameservers & AXFR',
+          icon: 'fa-server',
+          status: report.nameservers.axfr_checks.some(c => c.vulnerable) ? 'AXFR VULNERABLE' : 'SECURE',
+          badgeClass: report.nameservers.axfr_checks.some(c => c.vulnerable) ? 'text-red-400 bg-red-500/10 font-black' : 'text-green-400 bg-green-500/10',
+          desc: `${report.nameservers.nameservers.length} authoritative nameserver(s) configured.`,
+          extra: report.nameservers.axfr_checks.some(c => c.vulnerable) ? '🚨 CRITICAL: DNS Zone Transfer open!' : 'All nameservers refused unauthorized transfers'
+        },
+        {
+          title: 'MX Mail Exchange',
+          icon: 'fa-inbox',
+          status: report.mx.records.length ? `${report.mx.records.length} ACTIVE` : 'NONE',
+          badgeClass: report.mx.records.length ? 'text-green-400 bg-green-500/10' : 'text-slate-400 bg-slate-800',
+          desc: report.mx.records.length ? `Primary: ${report.mx.records[0].exchange} (pref: ${report.mx.records[0].preference})` : 'No dedicated MX mail servers found.',
+          extra: report.mx.records.length ? 'Mail routing active' : 'Domain cannot receive email'
+        }
+      ];
+
+      modules.forEach(m => {
+        const card = document.createElement('div');
+        card.className = 'bg-slate-900/80 border border-slate-800 rounded-xl p-5 shadow-lg flex flex-col justify-between space-y-3';
+        card.innerHTML = `
+          <div>
+            <div class="flex items-center justify-between">
+              <span class="text-sm font-bold text-white flex items-center space-x-2">
+                <i class="fa-solid ${m.icon} text-slate-400"></i>
+                <span>${m.title}</span>
+              </span>
+              <span class="text-xs px-2.5 py-0.5 rounded-full font-bold ${m.badgeClass}">${m.status}</span>
+            </div>
+            <p class="text-xs text-slate-300 mt-2.5">${m.desc}</p>
+          </div>
+          <div class="pt-2 border-t border-slate-800/80 text-[11px] text-slate-500 font-mono truncate">
+            ${m.extra}
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function renderFindings(findings) {
+      const container = document.getElementById('findingsList');
+      container.innerHTML = '';
+
+      if (!findings || findings.length === 0) {
+        container.innerHTML = '<div class="p-4 rounded-xl bg-green-500/10 border border-green-500/20 text-green-400 text-sm">✔ No security risks or misconfigurations detected!</div>';
+        return;
+      }
+
+      const severityStyles = {
+        'CRITICAL': 'bg-red-500/10 text-red-400 border-red-500/30',
+        'HIGH': 'bg-rose-500/10 text-rose-300 border-rose-500/30',
+        'MEDIUM': 'bg-yellow-500/10 text-yellow-300 border-yellow-500/30',
+        'LOW': 'bg-cyan-500/10 text-cyan-300 border-cyan-500/30',
+        'INFO': 'bg-slate-800 text-slate-400 border-slate-700'
+      };
+
+      findings.forEach(f => {
+        const item = document.createElement('div');
+        item.className = 'p-4 rounded-xl bg-slate-950/70 border border-slate-800/80 space-y-2';
+        const badgeClass = severityStyles[f.severity] || severityStyles['INFO'];
+        item.innerHTML = `
+          <div class="flex items-center justify-between">
+            <span class="text-sm font-bold text-white">${f.title}</span>
+            <span class="text-xs px-2.5 py-0.5 rounded-md font-bold border ${badgeClass}">${f.severity}</span>
+          </div>
+          <p class="text-xs text-slate-400 leading-relaxed">${f.description}</p>
+          <div class="p-2.5 rounded-lg bg-slate-900 border border-slate-800/60 text-xs text-emerald-400 flex items-start space-x-2">
+            <i class="fa-solid fa-wrench text-xs mt-0.5"></i>
+            <span><b>Fix:</b> ${f.remediation}</span>
+          </div>
+        `;
+        container.appendChild(item);
+      });
+    }
+
+    function renderRawRecords(report) {
+      const container = document.getElementById('rawRecords');
+      let html = '';
+
+      if (report.spf.record) html += `<div><span class="text-slate-500">SPF:   </span><span class="text-blue-300">${escapeHtml(report.spf.record)}</span></div>`;
+      if (report.dmarc.record) html += `<div><span class="text-slate-500">DMARC: </span><span class="text-indigo-300">${escapeHtml(report.dmarc.record)}</span></div>`;
+      
+      report.dkim.found_selectors.forEach(s => {
+        html += `<div><span class="text-slate-500">DKIM (${s.selector}): </span><span class="text-amber-300">${escapeHtml(s.record)}</span></div>`;
+      });
+
+      report.mx.records.forEach(mx => {
+        html += `<div><span class="text-slate-500">MX:    </span><span class="text-emerald-300">pref=${mx.preference} host=${mx.exchange}</span></div>`;
+      });
+
+      report.nameservers.nameservers.forEach(ns => {
+        html += `<div><span class="text-slate-500">NS:    </span><span class="text-purple-300">${escapeHtml(ns)}</span></div>`;
+      });
+
+      container.innerHTML = html || '<div class="text-slate-500 italic">No public records fetched.</div>';
+    }
+
+    function escapeHtml(text) {
+      return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+
+    function downloadReport(type) {
+      if (!currentReport) return;
+      if (type === 'json') {
+        const blob = new Blob([JSON.stringify(currentReport, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${currentReport.domain}_security_audit.json`;
+        a.click();
+      } else if (type === 'md') {
+        window.location.href = `/api/report?domain=${encodeURIComponent(currentReport.domain)}`;
+      }
+    }
+  </script>
+</body>
+</html>
