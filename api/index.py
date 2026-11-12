@@ -24,12 +24,17 @@ class VercelPathMiddleware:
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] == "http":
             headers = dict(scope.get("headers", []))
-            # Vercel sends x-matched-path header containing the requested path before internal rewrites
+            # Debug header check
             matched = headers.get(b"x-matched-path")
+            forwarded_uri = headers.get(b"x-forwarded-uri")
+            url_path = None
             if matched:
-                path = matched.decode("utf-8").split("?")[0]
-                if path:
-                    scope["path"] = path
+                url_path = matched.decode("utf-8").split("?")[0]
+            elif forwarded_uri:
+                url_path = forwarded_uri.decode("utf-8").split("?")[0]
+
+            if url_path:
+                scope["path"] = url_path
             elif scope["path"] in ("/api/index", "/api/index/"):
                 scope["path"] = "/"
         await self.app(scope, receive, send)

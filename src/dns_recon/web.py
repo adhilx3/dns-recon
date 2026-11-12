@@ -4,7 +4,7 @@ import sys
 import webbrowser
 from typing import Any
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, Response
 import uvicorn
 
@@ -488,6 +488,16 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 </body>
 </html>
 """
+
+
+@app.get("/debug")
+def debug(request: Request) -> dict[str, Any]:
+    return {
+        "url": str(request.url),
+        "path": request.url.path,
+        "scope_path": request.scope.get("path"),
+        "headers": dict(request.headers),
+    }
 
 
 @app.get("/", response_class=HTMLResponse)
