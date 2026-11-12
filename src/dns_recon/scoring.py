@@ -1,7 +1,7 @@
 from __future__ import annotations
 from datetime import datetime, timezone
 
-from dns_recon.dns_client import DNSClient
+from dns_recon.dns_client import DNSClient, DNSLookupError
 from dns_recon.models import AssessmentReport, Finding, Severity
 from dns_recon.analyzers.spf import analyze_spf
 from dns_recon.analyzers.dmarc import analyze_dmarc
@@ -62,6 +62,9 @@ def run_full_assessment(
 
     # Clean domain input
     domain = domain.strip().lower().rstrip(".")
+
+    if not client.domain_exists(domain):
+        raise DNSLookupError(f"Target domain '{domain}' does not exist (NXDOMAIN).")
 
     spf_res = analyze_spf(client, domain)
     dmarc_res = analyze_dmarc(client, domain)

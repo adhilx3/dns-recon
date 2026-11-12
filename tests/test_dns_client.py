@@ -49,9 +49,17 @@ def test_query_records_clean_quotes():
 def test_query_records_nxdomain():
     client = DNSClient()
     with patch.object(client.resolver, "resolve", side_effect=dns.resolver.NXDOMAIN):
-        with pytest.raises(DNSLookupError) as exc_info:
-            client.query_records("nonexistent-domain-12345.xyz", RecordType.A)
-        assert "does not exist" in str(exc_info.value)
+        results = client.query_records("nonexistent-selector.example.com", RecordType.TXT)
+        assert results == []
+
+
+def test_domain_exists():
+    client = DNSClient()
+    with patch.object(client.resolver, "resolve", return_value=[MagicMock()]):
+        assert client.domain_exists("example.com") is True
+
+    with patch.object(client.resolver, "resolve", side_effect=dns.resolver.NXDOMAIN):
+        assert client.domain_exists("invalid-domain-12345.xyz") is False
 
 
 def test_query_records_no_answer():

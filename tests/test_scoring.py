@@ -50,6 +50,7 @@ def test_calculate_score_zero_floor():
 
 def test_run_full_assessment_mocked():
     mock_client = MagicMock()
+    mock_client.domain_exists.return_value = True
     # Mock SPF
     mock_client.resolve_txt_records.side_effect = lambda domain: (
         ["v=spf1 -all"] if domain == "example.com"

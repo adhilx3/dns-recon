@@ -32,15 +32,23 @@ class DNSClient:
         self.resolver.timeout = timeout
         self.resolver.lifetime = lifetime
 
+    def domain_exists(self, domain: str) -> bool:
+        """Check if the base domain exists (checks SOA or NS record)."""
+        try:
+            self.resolver.resolve(domain, "SOA")
+            return True
+        except dns.resolver.NXDOMAIN:
+            return False
+        except Exception:
+            return True
+
     def query_records(self, domain: str, record_type: RecordType | str) -> list[str]:
         """Query DNS records for a domain. Returns list of record text strings."""
         rdtype_str = record_type.value if isinstance(record_type, RecordType) else str(record_type)
         try:
             answers = self.resolver.resolve(domain, rdtype_str)
             return [rdata.to_text() for rdata in answers]
-        except dns.resolver.NXDOMAIN:
-            raise DNSLookupError(f"Domain '{domain}' does not exist (NXDOMAIN).")
-        except (dns.resolver.NoAnswer, dns.resolver.NoNameservers):
+        except (dns.resolver.NXDOMAIN, dns.resolver.NoAnswer, dns.resolver.NoNameservers):
             return []
         except dns.exception.Timeout:
             return []
