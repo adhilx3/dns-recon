@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dns-recon"
+version = "0.1.0"
+description = "DNS Health, Security Hygiene & Email Spoofing Reconnaissance Scanner"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "dnspython>=2.6.0",
+    "rich>=13.0.0",
+]
+
+[project.scripts]
+dns-recon = "dns_recon.cli:main"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-mock>=3.12.0",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
