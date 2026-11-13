@@ -29,10 +29,10 @@ def analyze_mx(client: DNSClient, domain: str) -> MXResult:
     if not records:
         findings.append(
             Finding(
-                title="No MX Records Configured",
-                severity=Severity.LOW,
-                description=f"Domain '{domain}' does not have any dedicated MX records published. Incoming email delivery may fail or fall back to the root A record (RFC 5321).",
-                remediation="If this domain receives email, configure dedicated MX records with proper priority.",
+                title="No MX Records Configured (Non-Receiving Domain)",
+                severity=Severity.INFO,
+                description=f"Domain '{domain}' does not publish any MX records (designated non-receiving domain).",
+                remediation="If this domain is meant to receive incoming emails, configure dedicated MX records with proper priority.",
             )
         )
     else:

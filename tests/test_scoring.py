@@ -90,3 +90,35 @@ def test_run_full_assessment_mocked():
     assert report.dmarc.policy == "reject"
     assert report.dnssec.is_enabled is True
     assert len(report.nameservers.nameservers) == 2
+
+
+def test_subdomain_apex_inheritance():
+    mock_client = MagicMock()
+    mock_client.domain_exists.return_value = True
+    # Child sub.example.com has no SPF/DMARC, apex example.com has strict SPF and DMARC reject
+    def mock_resolve_txt(domain):
+        if domain == "example.com":
+            return ["v=spf1 -all"]
+        if domain == "_dmarc.example.com":
+            return ["v=DMARC1; p=reject; sp=reject;"]
+        return []
+
+    def mock_query(domain, rtype):
+        from dns_recon.models import RecordType
+        if rtype == RecordType.NS and domain == "example.com":
+            return ["ns1.example.com.", "ns2.example.com."]
+        return []
+
+    mock_client.resolve_txt_records.side_effect = mock_resolve_txt
+    mock_client.query_records.side_effect = mock_query
+    mock_client.resolve_ips_for_name.return_value = ["192.0.2.1"]
+    mock_client.test_zone_transfer.return_value = (False, [])
+
+    report = run_full_assessment("sub.example.com", client=mock_client)
+    assert report.score >= 85
+    assert report.grade in ("A+", "A")
+    assert report.spf.is_valid is True
+    assert report.spf.all_mechanism == "-all"
+    assert report.dmarc.policy == "reject"
+    assert len(report.nameservers.nameservers) == 2
+

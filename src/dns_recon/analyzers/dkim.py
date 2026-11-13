@@ -96,14 +96,15 @@ def analyze_dkim(
                 )
 
                 if pub_key == "":
-                    findings.append(
-                        Finding(
-                            title=f"Revoked DKIM Key (Selector: {selector})",
-                            severity=Severity.LOW,
-                            description=f"The DKIM public key for selector '{selector}' is empty, indicating a revoked key.",
-                            remediation="If this selector is no longer in use, delete the DNS record.",
+                    if not any("Revoked / Disabled DKIM" in f.title for f in findings):
+                        findings.append(
+                            Finding(
+                                title="Revoked / Disabled DKIM Key (p=)",
+                                severity=Severity.INFO,
+                                description=f"DKIM record for selector '{selector}' publishes an empty public key (p=), explicitly disabling/revoking signing under RFC 6376 Section 6.1.2.",
+                                remediation="Normal and compliant behavior for non-sending domains or decommissioned selectors.",
+                            )
                         )
-                    )
                 elif key_size and key_size < 1024:
                     findings.append(
                         Finding(
@@ -137,7 +138,7 @@ def analyze_dkim(
         findings.append(
             Finding(
                 title="No DKIM Selectors Discovered",
-                severity=Severity.LOW,
+                severity=Severity.INFO,
                 description=f"None of the {len(to_test)} tested selectors were found at *._domainkey.{domain}. DKIM selectors are not publicly discoverable via standard queries without guessing or inspecting email headers.",
                 remediation="If DKIM is configured, verify your specific selector with the --selectors flag (e.g. --selectors custom1,k2).",
             )

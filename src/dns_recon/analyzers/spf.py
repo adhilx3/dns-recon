@@ -78,6 +78,21 @@ def analyze_spf(client: DNSClient, domain: str) -> SPFResult:
     """Analyze SPF records for the given domain."""
     txt_records = client.resolve_txt_records(domain)
     spf_records = [r for r in txt_records if r.lower().startswith("v=spf1")]
+    is_inherited = False
+    inherited_from = ""
+
+    # Subdomain apex fallback
+    if not spf_records:
+        labels = domain.split(".")
+        for i in range(1, len(labels) - 1):
+            parent_candidate = ".".join(labels[i:])
+            parent_txt = client.resolve_txt_records(parent_candidate)
+            parent_spf = [r for r in parent_txt if r.lower().startswith("v=spf1")]
+            if parent_spf:
+                spf_records = parent_spf
+                is_inherited = True
+                inherited_from = parent_candidate
+                break
 
     findings: list[Finding] = []
 

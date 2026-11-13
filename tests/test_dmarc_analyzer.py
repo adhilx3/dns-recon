@@ -84,3 +84,17 @@ def test_dmarc_subdomain_policy_none():
     assert result.subdomain_policy == "none"
     assert any(f.severity == Severity.HIGH and "sp=none" in f.title for f in result.findings)
 
+
+def test_dmarc_subdomain_inheritance():
+    mock_client = MagicMock()
+    mock_client.resolve_txt_records.side_effect = lambda domain: (
+        [] if domain == "_dmarc.sub.example.com"
+        else ["v=DMARC1; p=reject; sp=reject;"] if domain == "_dmarc.example.com"
+        else []
+    )
+    result = analyze_dmarc(mock_client, "sub.example.com")
+    assert result.is_valid is True
+    assert result.policy == "reject"
+    assert any(f.severity == Severity.INFO and "reject" in f.title for f in result.findings)
+
+

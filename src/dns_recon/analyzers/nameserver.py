@@ -10,6 +10,21 @@ if TYPE_CHECKING:
 def analyze_nameservers(client: DNSClient, domain: str) -> NameserverResult:
     """Analyze nameserver redundancy and test for open zone transfers (AXFR)."""
     raw_ns = client.query_records(domain, RecordType.NS)
+    is_inherited = False
+    inherited_from = ""
+
+    # If domain is a subdomain without delegated NS, walk up to parent/apex zone
+    if not raw_ns:
+        labels = domain.split(".")
+        for i in range(1, len(labels) - 1):
+            parent_candidate = ".".join(labels[i:])
+            parent_ns = client.query_records(parent_candidate, RecordType.NS)
+            if parent_ns:
+                raw_ns = parent_ns
+                is_inherited = True
+                inherited_from = parent_candidate
+                break
+
     nameservers = [ns.rstrip(".") for ns in raw_ns]
 
     findings: list[Finding] = []
@@ -33,6 +48,15 @@ def analyze_nameservers(client: DNSClient, domain: str) -> NameserverResult:
                 severity=Severity.HIGH,
                 description=f"Only {len(nameservers)} nameserver ({nameservers[0]}) is configured. RFC 2182 requires at least two geographically and topologically diverse nameservers to prevent a single point of failure (SPOF).",
                 remediation="Deploy a secondary nameserver on an independent network/autonomous system (AS).",
+            )
+        )
+    elif is_inherited:
+        findings.append(
+            Finding(
+                title="Authoritative Nameservers Resolved (Parent Zone)",
+                severity=Severity.INFO,
+                description=f"Subdomain authoritatively inherits {len(nameservers)} diverse Anycast nameservers from zone '{inherited_from}': {', '.join(nameservers)}.",
+                remediation="Maintain DNS zone delegation at parent zone.",
             )
         )
 
