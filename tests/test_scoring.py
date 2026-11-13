@@ -12,7 +12,15 @@ from dns_recon.models import (
     DMARCResult,
     Severity,
 )
-from dns_recon.scoring import calculate_score, determine_grade, run_full_assessment
+from dns_recon.scoring import calculate_score, determine_grade, normalize_domain, run_full_assessment
+
+
+def test_normalize_domain():
+    assert normalize_domain("adhilparokkot.vercel.app/admin") == "adhilparokkot.vercel.app"
+    assert normalize_domain("https://example.com/some/path?param=1") == "example.com"
+    assert normalize_domain("http://sub.domain.com:8080/test") == "sub.domain.com"
+    assert normalize_domain("  TEST.ORG/  ") == "test.org"
+    assert normalize_domain("domain.co.uk.") == "domain.co.uk"
 
 
 def test_calculate_score_clean():

@@ -1,6 +1,8 @@
 from __future__ import annotations
 from datetime import datetime, timezone
 
+from urllib.parse import urlparse
+
 from dns_recon.dns_client import DNSClient, DNSLookupError
 from dns_recon.models import AssessmentReport, Finding, Severity
 from dns_recon.analyzers.spf import analyze_spf
@@ -17,6 +19,23 @@ SEVERITY_ORDER = {
     Severity.LOW: 3,
     Severity.INFO: 4,
 }
+
+
+def normalize_domain(domain_or_url: str) -> str:
+    """Extract clean domain/hostname from user input (stripping protocols, paths, ports, trailing dots)."""
+    text = domain_or_url.strip()
+    if "://" in text:
+        parsed = urlparse(text)
+        host = parsed.netloc or parsed.path
+    else:
+        # Strip leading slashes, path parts, query strings, fragments
+        host = text.lstrip("/").split("/")[0].split("?")[0].split("#")[0]
+
+    # Strip port if present (e.g. example.com:8080)
+    if ":" in host:
+        host = host.split(":")[0]
+
+    return host.strip().lower().rstrip(".")
 
 
 def calculate_score(findings: list[Finding]) -> int:
@@ -60,10 +79,10 @@ def run_full_assessment(
     if client is None:
         client = DNSClient()
 
-    # Clean domain input
-    domain = domain.strip().lower().rstrip(".")
+    # Clean and normalize domain input (handles URLs, paths, ports)
+    domain = normalize_domain(domain)
 
-    if not client.domain_exists(domain):
+    if not domain or not client.domain_exists(domain):
         raise DNSLookupError(f"Target domain '{domain}' does not exist (NXDOMAIN).")
 
     spf_res = analyze_spf(client, domain)

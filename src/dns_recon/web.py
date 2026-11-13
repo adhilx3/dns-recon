@@ -18,7 +18,7 @@ app = FastAPI(
     version="0.1.0",
 )
 
-HTML_TEMPLATE = """<!DOCTYPE html>
+HTML_TEMPLATE = r"""<!DOCTYPE html>
 <html lang="en" class="dark">
 <head>
   <meta charset="UTF-8">
@@ -236,8 +236,19 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   <script>
     let currentReport = null;
 
-    async function executeScan(domain) {
+    function sanitizeDomain(input) {
+      if (!input) return '';
+      let d = input.trim();
+      d = d.replace(/^[a-zA-Z]+:\/\//, ''); // strip http://, https://
+      d = d.split('/')[0].split('?')[0].split('#')[0]; // strip path, query, hash
+      d = d.split(':')[0]; // strip port
+      return d.toLowerCase().replace(/\.+$/, '');
+    }
+
+    async function executeScan(rawDomain) {
+      const domain = sanitizeDomain(rawDomain);
       if (!domain) return;
+      document.getElementById('domainInput').value = domain;
       
       const form = document.getElementById('scanForm');
       const scanBtn = document.getElementById('scanBtn');
