@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DNS Recon & Email Spoofing Scanner</title>
+  <title>DNS Recon & Email Spoofing Scanner - v2 Power Recon & OSINT</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script>
@@ -38,23 +38,23 @@
         </div>
         <div>
           <span class="font-bold text-lg tracking-tight bg-gradient-to-r from-blue-400 to-indigo-300 bg-clip-text text-transparent">DNS Recon</span>
-          <span class="text-xs px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20 ml-2 font-mono">v0.1.0</span>
+          <span class="text-xs px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20 ml-2 font-mono">v2.0 Power Recon</span>
         </div>
       </div>
       <div class="flex items-center space-x-3">
-        <span class="text-xs text-slate-400"><i class="fa-solid fa-bolt text-amber-400 mr-1"></i>Defensive Recon Scanner</span>
+        <span class="text-xs text-slate-400 hidden sm:inline"><i class="fa-solid fa-bolt text-amber-400 mr-1"></i>Defensive Recon & OSINT Suite</span>
       </div>
     </div>
   </header>
 
   <!-- Hero & Input Form -->
   <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-    <div class="text-center max-w-2xl mx-auto space-y-3">
+    <div class="text-center max-w-3xl mx-auto space-y-3">
       <h1 class="text-3xl sm:text-4xl font-extrabold tracking-tight text-white">
-        DNS Health & Email Spoofing Scanner
+        DNS Reconnaissance & Intelligence Suite
       </h1>
       <p class="text-slate-400 text-sm sm:text-base">
-        Inspect SPF, DMARC, DKIM, DNSSEC, Nameserver AXFR zone transfers, and email spoofing resilience in seconds.
+        Inspect Email Spoofing (SPF, DMARC, DKIM, BIMI, MTA-STS), Subdomain Takeover risks, and gather OSINT (IP resolution, reverse PTR, Certificate Transparency subdomain enumeration).
       </p>
       
       <!-- Input Group -->
@@ -64,7 +64,7 @@
           <input 
             type="text" 
             id="domainInput" 
-            placeholder="Enter domain (e.g. cloudflare.com, google.com)" 
+            placeholder="Enter domain (e.g. cloudflare.com, github.com, google.com)" 
             required 
             class="w-full bg-transparent border-0 text-white placeholder-slate-500 px-4 py-3 text-base focus:outline-none"
           />
@@ -80,7 +80,7 @@
       </form>
 
       <!-- Quick Test Pills -->
-      <div class="flex flex-wrap items-center justify-center gap-2 pt-2 text-xs text-slate-400">
+      <div class="flex flex-wrap items-center justify-center gap-2 pt-1 text-xs text-slate-400">
         <span>Quick test:</span>
         <button onclick="quickScan('cloudflare.com')" class="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 transition">cloudflare.com</button>
         <button onclick="quickScan('github.com')" class="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 transition">github.com</button>
@@ -88,11 +88,32 @@
       </div>
     </div>
 
+    <!-- Navigation Tabs -->
+    <div class="flex items-center justify-center space-x-2 border-b border-slate-800 pb-3">
+      <button 
+        id="tabBtnAudit" 
+        onclick="switchTab('audit')" 
+        class="px-5 py-2.5 rounded-xl font-bold text-sm transition flex items-center space-x-2 bg-blue-600 text-white shadow-lg shadow-blue-500/20"
+      >
+        <i class="fa-solid fa-shield-halved"></i>
+        <span>Security & Spoofing Audit</span>
+      </button>
+      <button 
+        id="tabBtnOsint" 
+        onclick="switchTab('osint')" 
+        class="px-5 py-2.5 rounded-xl font-bold text-sm transition flex items-center space-x-2 text-slate-400 hover:text-white hover:bg-slate-900 border border-transparent hover:border-slate-800"
+      >
+        <i class="fa-solid fa-network-wired"></i>
+        <span>Information Gathering & OSINT</span>
+        <span class="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 font-mono">v2</span>
+      </button>
+    </div>
+
     <!-- Loading State -->
     <div id="loadingState" class="hidden text-center py-16 space-y-4">
       <div class="inline-block animate-spin rounded-full h-12 w-12 border-4 border-slate-800 border-t-blue-500"></div>
-      <p class="text-slate-300 font-medium text-lg">Querying authoritative nameservers & auditing records...</p>
-      <p class="text-slate-500 text-sm">Testing SPF lookups, DMARC alignment, DKIM selectors, and AXFR zone transfer.</p>
+      <p id="loadingTitle" class="text-slate-300 font-medium text-lg">Querying authoritative nameservers & auditing records...</p>
+      <p id="loadingSubtitle" class="text-slate-500 text-sm">Testing SPF, DMARC, DKIM, BIMI, MTA-STS, and dangling CNAME records.</p>
     </div>
 
     <!-- Error State -->
@@ -104,8 +125,10 @@
       </div>
     </div>
 
-    <!-- Scan Results Container -->
-    <div id="resultsContainer" class="hidden space-y-8">
+    <!-- ============================================== -->
+    <!-- TAB 1: SECURITY & SPOOFING AUDIT CONTAINER -->
+    <!-- ============================================== -->
+    <div id="tabContentAudit" class="hidden space-y-8">
       
       <!-- Top Overview Bar -->
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -164,22 +187,22 @@
               <span id="quickSpf" class="text-sm font-bold text-white block mt-1">-</span>
             </div>
             <div class="bg-slate-950/60 p-3 rounded-xl border border-slate-800/80">
-              <span class="text-xs text-slate-500 block">DNSSEC</span>
-              <span id="quickDnssec" class="text-sm font-bold text-white block mt-1">-</span>
+              <span class="text-xs text-slate-500 block">MTA-STS & TLS</span>
+              <span id="quickMtaSts" class="text-sm font-bold text-white block mt-1">-</span>
             </div>
             <div class="bg-slate-950/60 p-3 rounded-xl border border-slate-800/80">
-              <span class="text-xs text-slate-500 block">AXFR Zone Transfer</span>
-              <span id="quickAxfr" class="text-sm font-bold text-white block mt-1">-</span>
+              <span class="text-xs text-slate-500 block">Takeover Status</span>
+              <span id="quickTakeover" class="text-sm font-bold text-white block mt-1">-</span>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- Protocol Cards Grid (6 Modules) -->
+      <!-- Protocol Cards Grid (9 Modules) -->
       <div>
         <h3 class="text-lg font-bold text-white mb-4 flex items-center space-x-2">
           <i class="fa-solid fa-cubes text-blue-400"></i>
-          <span>Protocol Security Audits</span>
+          <span>Protocol Security Audits (v2 Power Recon)</span>
         </h3>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5" id="protocolCards">
           <!-- Populated by JS -->
@@ -211,10 +234,142 @@
       </div>
 
     </div>
+
+    <!-- ============================================== -->
+    <!-- TAB 2: INFORMATION GATHERING & OSINT CONTAINER -->
+    <!-- ============================================== -->
+    <div id="tabContentOsint" class="hidden space-y-8">
+      
+      <!-- Top Action Bar -->
+      <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div class="space-y-1">
+          <div class="flex items-center space-x-3">
+            <h3 class="text-xl font-bold text-white">Target Intelligence Overview</h3>
+            <span id="osintTargetHostBadge" class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20">
+              Host: Detecting...
+            </span>
+          </div>
+          <p id="osintDomainDisplay" class="text-xs text-slate-400 font-mono"></p>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <button onclick="exportSubdomainsCsv()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-medium text-slate-200 border border-slate-700 transition flex items-center space-x-1.5">
+            <i class="fa-solid fa-file-csv text-emerald-400"></i>
+            <span>Export Subdomains CSV</span>
+          </button>
+          <button onclick="downloadOsintReport('md')" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-medium text-slate-200 border border-slate-700 transition flex items-center space-x-1.5">
+            <i class="fa-solid fa-file-arrow-down text-blue-400"></i>
+            <span>Download Report (MD)</span>
+          </button>
+          <button onclick="downloadOsintReport('json')" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-medium text-slate-200 border border-slate-700 transition flex items-center space-x-1.5">
+            <i class="fa-solid fa-code text-indigo-400"></i>
+            <span>JSON</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- IP Resolution & Infrastructure Cards -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+        <!-- Resolved IP Addresses Card -->
+        <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
+          <h4 class="text-base font-bold text-white flex items-center space-x-2 border-b border-slate-800 pb-3">
+            <i class="fa-solid fa-network-wired text-cyan-400"></i>
+            <span>Target IP Addresses (A & AAAA)</span>
+          </h4>
+          <div id="ipRecordsList" class="space-y-3">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+
+        <!-- Core Infrastructure (NS & MX) -->
+        <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
+          <h4 class="text-base font-bold text-white flex items-center space-x-2 border-b border-slate-800 pb-3">
+            <i class="fa-solid fa-server text-purple-400"></i>
+            <span>Infrastructure Routing (Nameservers & MX)</span>
+          </h4>
+          <div class="space-y-3">
+            <div>
+              <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider block mb-1.5">Nameservers:</span>
+              <div id="osintNameserversList" class="space-y-1 font-mono text-xs text-slate-300">
+                <!-- Populated by JS -->
+              </div>
+            </div>
+            <div class="pt-2 border-t border-slate-800/80">
+              <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider block mb-1.5">Mail Exchangers (MX):</span>
+              <div id="osintMxList" class="space-y-1 font-mono text-xs text-slate-300">
+                <!-- Populated by JS -->
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Subdomain Enumeration & Discovery Section -->
+      <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-5">
+        
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+          <div>
+            <h4 class="text-lg font-bold text-white flex items-center space-x-2">
+              <i class="fa-solid fa-sitemap text-blue-400"></i>
+              <span>Discovered Subdomains (<span id="totalSubdomainsCount">0</span>)</span>
+            </h4>
+            <p class="text-xs text-slate-400 mt-1">
+              Enumerated via Certificate Transparency (crt.sh) logs & authoritative DNS probing.
+            </p>
+          </div>
+          <div class="flex items-center space-x-3">
+            <div class="flex items-center space-x-2 text-xs">
+              <span class="px-2.5 py-1 rounded-lg bg-green-500/10 text-green-400 border border-green-500/20 font-bold">
+                <i class="fa-solid fa-circle text-[8px] mr-1"></i><span id="liveSubdomainsCount">0</span> Live
+              </span>
+              <span class="px-2.5 py-1 rounded-lg bg-slate-800 text-slate-400 border border-slate-700 font-bold">
+                <i class="fa-solid fa-circle text-[8px] mr-1 text-slate-500"></i><span id="inactiveSubdomainsCount">0</span> Inactive
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Search / Filter input -->
+        <div class="relative">
+          <i class="fa-solid fa-filter absolute left-3.5 top-3.5 text-slate-500 text-xs"></i>
+          <input 
+            type="text" 
+            id="subdomainFilterInput" 
+            placeholder="Filter subdomains (e.g. api, mail, dev, admin)..." 
+            oninput="filterSubdomains()"
+            class="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-4 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
+          />
+        </div>
+
+        <!-- Subdomain Table -->
+        <div class="overflow-x-auto rounded-xl border border-slate-800">
+          <table class="w-full text-left text-xs text-slate-300">
+            <thead class="bg-slate-950 text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
+              <tr>
+                <th class="py-3 px-4">Subdomain</th>
+                <th class="py-3 px-4">Type</th>
+                <th class="py-3 px-4">Target / IP</th>
+                <th class="py-3 px-4">Status</th>
+                <th class="py-3 px-4">Source</th>
+              </tr>
+            </thead>
+            <tbody id="subdomainTableBody" class="divide-y divide-slate-800/60 font-mono">
+              <!-- Populated by JS -->
+            </tbody>
+          </table>
+        </div>
+
+      </div>
+
+    </div>
+
   </main>
 
   <script>
     let currentReport = null;
+    let currentOsint = null;
+    let currentTab = 'audit';
 
     function sanitizeDomain(input) {
       if (!input) return '';
@@ -225,22 +380,52 @@
       return d.toLowerCase().replace(/\.+$/, '');
     }
 
+    function switchTab(tab) {
+      currentTab = tab;
+      const btnAudit = document.getElementById('tabBtnAudit');
+      const btnOsint = document.getElementById('tabBtnOsint');
+      const contentAudit = document.getElementById('tabContentAudit');
+      const contentOsint = document.getElementById('tabContentOsint');
+
+      if (tab === 'audit') {
+        btnAudit.className = "px-5 py-2.5 rounded-xl font-bold text-sm transition flex items-center space-x-2 bg-blue-600 text-white shadow-lg shadow-blue-500/20";
+        btnOsint.className = "px-5 py-2.5 rounded-xl font-bold text-sm transition flex items-center space-x-2 text-slate-400 hover:text-white hover:bg-slate-900 border border-transparent hover:border-slate-800";
+        if (currentReport) contentAudit.classList.remove('hidden');
+        contentOsint.classList.add('hidden');
+      } else {
+        btnOsint.className = "px-5 py-2.5 rounded-xl font-bold text-sm transition flex items-center space-x-2 bg-blue-600 text-white shadow-lg shadow-blue-500/20";
+        btnAudit.className = "px-5 py-2.5 rounded-xl font-bold text-sm transition flex items-center space-x-2 text-slate-400 hover:text-white hover:bg-slate-900 border border-transparent hover:border-slate-800";
+        contentAudit.classList.add('hidden');
+        
+        const domain = sanitizeDomain(document.getElementById('domainInput').value);
+        if (domain && (!currentOsint || currentOsint.domain !== domain)) {
+          fetchOsint(domain);
+        } else if (currentOsint) {
+          contentOsint.classList.remove('hidden');
+        }
+      }
+    }
+
     async function executeScan(rawDomain) {
       const domain = sanitizeDomain(rawDomain);
       if (!domain) return;
       document.getElementById('domainInput').value = domain;
       
-      const form = document.getElementById('scanForm');
       const scanBtn = document.getElementById('scanBtn');
       const loading = document.getElementById('loadingState');
       const errorDiv = document.getElementById('errorState');
-      const results = document.getElementById('resultsContainer');
+      const contentAudit = document.getElementById('tabContentAudit');
+      const contentOsint = document.getElementById('tabContentOsint');
 
       errorDiv.classList.add('hidden');
-      results.classList.add('hidden');
+      contentAudit.classList.add('hidden');
+      contentOsint.classList.add('hidden');
       loading.classList.remove('hidden');
       scanBtn.disabled = true;
       scanBtn.classList.add('opacity-50');
+
+      document.getElementById('loadingTitle').textContent = "Querying authoritative nameservers & auditing records...";
+      document.getElementById('loadingSubtitle').textContent = "Testing SPF, DMARC, DKIM, BIMI, MTA-STS, and dangling CNAME records.";
 
       try {
         const response = await fetch(`/api/scan?domain=${encodeURIComponent(domain)}`);
@@ -252,7 +437,15 @@
 
         currentReport = data;
         renderReport(data);
-        results.classList.remove('hidden');
+
+        // Fetch OSINT in background so switching tabs is instant!
+        fetchOsint(domain, true);
+
+        if (currentTab === 'audit') {
+          contentAudit.classList.remove('hidden');
+        } else {
+          contentOsint.classList.remove('hidden');
+        }
       } catch (err) {
         document.getElementById('errorMessage').textContent = err.message;
         errorDiv.classList.remove('hidden');
@@ -260,6 +453,35 @@
         loading.classList.add('hidden');
         scanBtn.disabled = false;
         scanBtn.classList.remove('opacity-50');
+      }
+    }
+
+    async function fetchOsint(domain, background = false) {
+      const loading = document.getElementById('loadingState');
+      const contentOsint = document.getElementById('tabContentOsint');
+
+      if (!background) {
+        loading.classList.remove('hidden');
+        document.getElementById('loadingTitle').textContent = "Enumerating subdomains & resolving infrastructure...";
+        document.getElementById('loadingSubtitle').textContent = "Searching Certificate Transparency logs (crt.sh) and conducting DNS queries.";
+      }
+
+      try {
+        const response = await fetch(`/api/info-gather?domain=${encodeURIComponent(domain)}`);
+        const data = await response.json();
+        if (response.ok) {
+          currentOsint = data;
+          renderOsint(data);
+          if (currentTab === 'osint') {
+            contentOsint.classList.remove('hidden');
+          }
+        }
+      } catch (e) {
+        console.error("OSINT gather failed:", e);
+      } finally {
+        if (!background) {
+          loading.classList.add('hidden');
+        }
       }
     }
 
@@ -307,11 +529,14 @@
       // Quick summary pills
       document.getElementById('quickDmarc').textContent = report.dmarc.policy ? `p=${report.dmarc.policy}` : 'Missing';
       document.getElementById('quickSpf').textContent = report.spf.all_mechanism || (report.spf.is_valid ? 'Valid' : 'Missing');
-      document.getElementById('quickDnssec').textContent = report.dnssec.is_enabled ? 'Enabled' : 'Disabled';
       
-      const axfrVuln = report.nameservers.axfr_checks.some(c => c.vulnerable);
-      document.getElementById('quickAxfr').textContent = axfrVuln ? 'VULNERABLE' : 'Secure';
-      document.getElementById('quickAxfr').className = axfrVuln ? 'text-sm font-bold text-red-400 block mt-1' : 'text-sm font-bold text-green-400 block mt-1';
+      const mtaActive = report.mta_sts && report.mta_sts.has_mta_sts;
+      document.getElementById('quickMtaSts').textContent = mtaActive ? 'Enforced' : 'Missing';
+      document.getElementById('quickMtaSts').className = mtaActive ? 'text-sm font-bold text-green-400 block mt-1' : 'text-sm font-bold text-slate-400 block mt-1';
+
+      const takeoverVuln = report.takeover && report.takeover.dangling_count > 0;
+      document.getElementById('quickTakeover').textContent = takeoverVuln ? `${report.takeover.dangling_count} DANGLING` : 'Secure';
+      document.getElementById('quickTakeover').className = takeoverVuln ? 'text-sm font-bold text-red-400 block mt-1 animate-pulse' : 'text-sm font-bold text-green-400 block mt-1';
 
       // Render Protocol Modules Cards
       renderProtocolCards(report);
@@ -375,6 +600,30 @@
           badgeClass: report.mx.records.length ? 'text-green-400 bg-green-500/10' : 'text-slate-400 bg-slate-800',
           desc: report.mx.records.length ? `Primary: ${report.mx.records[0].exchange} (pref: ${report.mx.records[0].preference})` : 'No dedicated MX mail servers found.',
           extra: report.mx.records.length ? 'Mail routing active' : 'Domain cannot receive email'
+        },
+        {
+          title: 'BIMI Brand Indicators',
+          icon: 'fa-certificate',
+          status: (report.bimi && report.bimi.is_valid) ? 'PUBLISHED' : ((report.bimi && report.bimi.record) ? 'INCOMPLETE' : 'NONE'),
+          badgeClass: (report.bimi && report.bimi.is_valid) ? 'text-green-400 bg-green-500/10' : ((report.bimi && report.bimi.record) ? 'text-yellow-400 bg-yellow-500/10' : 'text-slate-400 bg-slate-800'),
+          desc: (report.bimi && report.bimi.location) ? `SVG Logo: <a href="${report.bimi.location}" target="_blank" class="text-blue-400 underline truncate block">${report.bimi.location}</a>` : 'No BIMI record configured to display authenticated logo in inboxes.',
+          extra: (report.bimi && report.bimi.authority) ? 'VMC Certificate linked' : 'No VMC certificate specified'
+        },
+        {
+          title: 'MTA-STS & TLS-RPT',
+          icon: 'fa-shield-halved',
+          status: (report.mta_sts && report.mta_sts.has_mta_sts && report.mta_sts.has_tls_rpt) ? 'ENFORCED' : ((report.mta_sts && (report.mta_sts.has_mta_sts || report.mta_sts.has_tls_rpt)) ? 'PARTIAL' : 'MISSING'),
+          badgeClass: (report.mta_sts && report.mta_sts.has_mta_sts && report.mta_sts.has_tls_rpt) ? 'text-green-400 bg-green-500/10' : ((report.mta_sts && (report.mta_sts.has_mta_sts || report.mta_sts.has_tls_rpt)) ? 'text-yellow-400 bg-yellow-500/10' : 'text-slate-400 bg-slate-800'),
+          desc: (report.mta_sts && report.mta_sts.has_mta_sts) ? `MTA-STS active (ID: ${report.mta_sts.mta_sts_id || 'valid'}). TLS-RPT: ${report.mta_sts.has_tls_rpt ? 'Reporting active' : 'Not configured'}.` : 'Outbound senders may fall back to plaintext SMTP.',
+          extra: 'Protects email transit against STARTTLS downgrade'
+        },
+        {
+          title: 'Subdomain Takeover',
+          icon: 'fa-triangle-exclamation',
+          status: (report.takeover && report.takeover.dangling_count > 0) ? `${report.takeover.dangling_count} DANGLING` : 'SECURE',
+          badgeClass: (report.takeover && report.takeover.dangling_count > 0) ? 'text-red-400 bg-red-500/10 font-bold' : 'text-green-400 bg-green-500/10',
+          desc: (report.takeover && report.takeover.dangling_count > 0) ? `🚨 Detected ${report.takeover.dangling_count} dangling CNAME record(s) pointing to unresolving services!` : `Audited common subdomains against 15+ cloud provider fingerprints; all targets resolve safely.`,
+          extra: `${(report.takeover && report.takeover.cname_checks) ? report.takeover.cname_checks.length : 0} CNAME records inspected`
         }
       ];
 
@@ -440,26 +689,154 @@
       const container = document.getElementById('rawRecords');
       let html = '';
 
-      if (report.spf.record) html += `<div><span class="text-slate-500">SPF:   </span><span class="text-blue-300">${escapeHtml(report.spf.record)}</span></div>`;
-      if (report.dmarc.record) html += `<div><span class="text-slate-500">DMARC: </span><span class="text-indigo-300">${escapeHtml(report.dmarc.record)}</span></div>`;
-      
+      if (report.spf.record) html += `<div><span class="text-slate-500">SPF:     </span><span class="text-blue-300">${escapeHtml(report.spf.record)}</span></div>`;
+      if (report.dmarc.record) html += `<div><span class="text-slate-500">DMARC:   </span><span class="text-indigo-300">${escapeHtml(report.dmarc.record)}</span></div>`;
+      if (report.bimi && report.bimi.record) html += `<div><span class="text-slate-500">BIMI:    </span><span class="text-cyan-300">${escapeHtml(report.bimi.record)}</span></div>`;
+      if (report.mta_sts && report.mta_sts.mta_sts_record) html += `<div><span class="text-slate-500">MTA-STS: </span><span class="text-teal-300">${escapeHtml(report.mta_sts.mta_sts_record)}</span></div>`;
+      if (report.mta_sts && report.mta_sts.tls_rpt_record) html += `<div><span class="text-slate-500">TLS-RPT: </span><span class="text-teal-300">${escapeHtml(report.mta_sts.tls_rpt_record)}</span></div>`;
+
       report.dkim.found_selectors.forEach(s => {
         html += `<div><span class="text-slate-500">DKIM (${s.selector}): </span><span class="text-amber-300">${escapeHtml(s.record)}</span></div>`;
       });
 
       report.mx.records.forEach(mx => {
-        html += `<div><span class="text-slate-500">MX:    </span><span class="text-emerald-300">pref=${mx.preference} host=${mx.exchange}</span></div>`;
+        html += `<div><span class="text-slate-500">MX:      </span><span class="text-emerald-300">pref=${mx.preference} host=${mx.exchange}</span></div>`;
       });
 
       report.nameservers.nameservers.forEach(ns => {
-        html += `<div><span class="text-slate-500">NS:    </span><span class="text-purple-300">${escapeHtml(ns)}</span></div>`;
+        html += `<div><span class="text-slate-500">NS:      </span><span class="text-purple-300">${escapeHtml(ns)}</span></div>`;
       });
 
       container.innerHTML = html || '<div class="text-slate-500 italic">No public records fetched.</div>';
     }
 
+    // ==============================================
+    // OSINT RENDERING LOGIC
+    // ==============================================
+    function renderOsint(data) {
+      document.getElementById('osintDomainDisplay').textContent = `Target: ${data.domain} • Generated: ${data.timestamp.replace('T', ' ').substring(0, 19)} UTC`;
+      document.getElementById('osintTargetHostBadge').textContent = `Cloud / CDN: ${data.detected_host || 'Undetermined'}`;
+
+      // IP Records
+      const ipList = document.getElementById('ipRecordsList');
+      ipList.innerHTML = '';
+      if (!data.ips || data.ips.length === 0) {
+        ipList.innerHTML = '<div class="text-slate-500 text-xs italic">No IP records resolved.</div>';
+      } else {
+        data.ips.forEach(ip => {
+          const item = document.createElement('div');
+          item.className = 'p-3 rounded-xl bg-slate-950/70 border border-slate-800/80 flex items-center justify-between text-xs font-mono';
+          item.innerHTML = `
+            <div class="space-y-0.5">
+              <div class="flex items-center space-x-2">
+                <span class="px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 text-[10px] font-bold">${ip.version}</span>
+                <span class="font-bold text-white text-sm">${ip.ip}</span>
+              </div>
+              <div class="text-[11px] text-slate-400 truncate max-w-sm">
+                <i class="fa-solid fa-arrow-turn-up text-slate-600 mr-1"></i>PTR: ${ip.ptr || '<span class="italic text-slate-600">None</span>'}
+              </div>
+            </div>
+            <div>
+              <span class="px-2.5 py-1 rounded-md bg-slate-900 border border-slate-700 text-slate-300 text-[11px]">
+                ${ip.provider || 'Direct IP'}
+              </span>
+            </div>
+          `;
+          ipList.appendChild(item);
+        });
+      }
+
+      // Nameservers & MX
+      const nsList = document.getElementById('osintNameserversList');
+      nsList.innerHTML = data.nameservers.length ? data.nameservers.map(ns => `<div><i class="fa-solid fa-angle-right text-purple-400 mr-1.5"></i>${escapeHtml(ns)}</div>`).join('') : '<div class="italic text-slate-600">No NS records</div>';
+
+      const mxList = document.getElementById('osintMxList');
+      mxList.innerHTML = data.mx_records.length ? data.mx_records.map(mx => `<div><i class="fa-solid fa-angle-right text-emerald-400 mr-1.5"></i>${escapeHtml(mx)}</div>`).join('') : '<div class="italic text-slate-600">No MX records</div>';
+
+      // Subdomains Summary
+      document.getElementById('totalSubdomainsCount').textContent = data.subdomains.length;
+      const liveCount = data.subdomains.filter(s => s.is_live).length;
+      document.getElementById('liveSubdomainsCount').textContent = liveCount;
+      document.getElementById('inactiveSubdomainsCount').textContent = data.subdomains.length - liveCount;
+
+      renderSubdomainsTable(data.subdomains);
+    }
+
+    function renderSubdomainsTable(subdomains) {
+      const tbody = document.getElementById('subdomainTableBody');
+      tbody.innerHTML = '';
+
+      if (!subdomains || subdomains.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="py-6 text-center text-slate-500 italic">No subdomains discovered.</td></tr>';
+        return;
+      }
+
+      subdomains.forEach(s => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-900/60 transition';
+        const liveBadge = s.is_live ? '<span class="px-2 py-0.5 rounded-full bg-green-500/10 text-green-400 border border-green-500/20 font-bold text-[10px]">🟢 LIVE</span>' : '<span class="px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700 text-[10px]">⚪ INACTIVE</span>';
+        const sourceBadge = s.source === 'ct_logs' ? '<span class="text-blue-400 text-[11px]">CT Logs</span>' : '<span class="text-slate-400 text-[11px]">DNS Perm</span>';
+
+        tr.innerHTML = `
+          <td class="py-3 px-4 font-bold text-white flex items-center space-x-1.5">
+            <i class="fa-solid fa-link text-slate-600 text-[10px]"></i>
+            <span>${escapeHtml(s.subdomain)}</span>
+          </td>
+          <td class="py-3 px-4 text-slate-400">${s.record_type}</td>
+          <td class="py-3 px-4 text-cyan-300 truncate max-w-xs">${escapeHtml(s.target)}</td>
+          <td class="py-3 px-4">${liveBadge}</td>
+          <td class="py-3 px-4">${sourceBadge}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function filterSubdomains() {
+      if (!currentOsint) return;
+      const query = document.getElementById('subdomainFilterInput').value.toLowerCase().trim();
+      if (!query) {
+        renderSubdomainsTable(currentOsint.subdomains);
+        return;
+      }
+      const filtered = currentOsint.subdomains.filter(s => 
+        s.subdomain.toLowerCase().includes(query) || 
+        s.target.toLowerCase().includes(query) ||
+        s.record_type.toLowerCase().includes(query)
+      );
+      renderSubdomainsTable(filtered);
+    }
+
+    function exportSubdomainsCsv() {
+      if (!currentOsint || !currentOsint.subdomains.length) return;
+      let csv = 'Subdomain,RecordType,Target,IsLive,Source\n';
+      currentOsint.subdomains.forEach(s => {
+        csv += `"${s.subdomain}","${s.record_type}","${s.target}","${s.is_live ? 'Live' : 'Inactive'}","${s.source}"\n`;
+      });
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${currentOsint.domain}_subdomains.csv`;
+      a.click();
+    }
+
+    function downloadOsintReport(type) {
+      if (!currentOsint) return;
+      if (type === 'json') {
+        const blob = new Blob([JSON.stringify(currentOsint, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${currentOsint.domain}_osint_recon.json`;
+        a.click();
+      } else if (type === 'md') {
+        window.location.href = `/api/report?domain=${encodeURIComponent(currentOsint.domain)}&type=osint`;
+      }
+    }
+
     function escapeHtml(text) {
-      return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      if (!text) return '';
+      return String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     }
 
     function downloadReport(type) {
@@ -472,10 +849,9 @@
         a.download = `${currentReport.domain}_security_audit.json`;
         a.click();
       } else if (type === 'md') {
-        window.location.href = `/api/report?domain=${encodeURIComponent(currentReport.domain)}`;
+        window.location.href = `/api/report?domain=${encodeURIComponent(currentReport.domain)}&type=security`;
       }
     }
   </script>
 </body>
 </html>
-

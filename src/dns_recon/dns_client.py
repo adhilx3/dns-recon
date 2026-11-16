@@ -4,6 +4,7 @@ import dns.zone
 import dns.query
 import dns.exception
 import dns.rdatatype
+import dns.reversename
 from typing import Sequence
 
 from dns_recon.models import RecordType
@@ -70,6 +71,39 @@ class DNSClient:
     def resolve_ips_for_name(self, name: str) -> list[str]:
         """Resolve A records for a hostname."""
         return self.query_records(name, RecordType.A)
+
+    def resolve_aaaa(self, name: str) -> list[str]:
+        """Resolve AAAA (IPv6) records for a hostname."""
+        return self.query_records(name, RecordType.AAAA)
+
+    def resolve_cname(self, name: str) -> str | None:
+        """Query CNAME for a hostname. Returns target string without trailing dot or None."""
+        records = self.query_records(name, RecordType.CNAME)
+        if records:
+            return records[0].strip().rstrip(".")
+        return None
+
+    def resolve_ptr(self, ip: str) -> list[str]:
+        """Perform reverse DNS PTR lookup for an IP address."""
+        try:
+            rev_name = dns.reversename.from_address(ip)
+            answers = self.resolver.resolve(rev_name, "PTR")
+            return [rdata.to_text().rstrip(".") for rdata in answers]
+        except Exception:
+            return []
+
+    def host_exists(self, host: str) -> bool:
+        """Check if a host exists by resolving A, AAAA, or CNAME."""
+        for rtype in ("A", "AAAA", "CNAME"):
+            try:
+                ans = self.resolver.resolve(host, rtype)
+                if len(ans) > 0:
+                    return True
+            except dns.resolver.NXDOMAIN:
+                return False
+            except Exception:
+                continue
+        return False
 
     def test_zone_transfer(self, domain: str, nameserver_host_or_ip: str) -> tuple[bool, list[str]]:
         """

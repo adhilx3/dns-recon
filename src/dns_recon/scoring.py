@@ -11,6 +11,9 @@ from dns_recon.analyzers.dkim import analyze_dkim
 from dns_recon.analyzers.dnssec import analyze_dnssec
 from dns_recon.analyzers.nameserver import analyze_nameservers
 from dns_recon.analyzers.mx import analyze_mx
+from dns_recon.analyzers.bimi import analyze_bimi
+from dns_recon.analyzers.mta_sts import analyze_mta_sts
+from dns_recon.analyzers.takeover import analyze_takeover
 
 SEVERITY_ORDER = {
     Severity.CRITICAL: 0,
@@ -91,6 +94,9 @@ def run_full_assessment(
     dnssec_res = analyze_dnssec(client, domain)
     ns_res = analyze_nameservers(client, domain)
     mx_res = analyze_mx(client, domain)
+    bimi_res = analyze_bimi(client, domain)
+    mta_sts_res = analyze_mta_sts(client, domain)
+    takeover_res = analyze_takeover(client, domain)
 
     all_findings: list[Finding] = []
     all_findings.extend(spf_res.findings)
@@ -99,6 +105,9 @@ def run_full_assessment(
     all_findings.extend(dnssec_res.findings)
     all_findings.extend(ns_res.findings)
     all_findings.extend(mx_res.findings)
+    all_findings.extend(bimi_res.findings)
+    all_findings.extend(mta_sts_res.findings)
+    all_findings.extend(takeover_res.findings)
 
     # Sort findings: highest severity first
     all_findings.sort(key=lambda f: SEVERITY_ORDER.get(f.severity, 99))
@@ -118,5 +127,8 @@ def run_full_assessment(
         dnssec=dnssec_res,
         nameservers=ns_res,
         mx=mx_res,
+        bimi=bimi_res,
+        mta_sts=mta_sts_res,
+        takeover=takeover_res,
         all_findings=all_findings,
     )

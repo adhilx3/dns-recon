@@ -116,3 +116,25 @@ def test_cli_nxdomain_error(capsys):
         assert exit_code == 1
         captured = capsys.readouterr()
         assert "Domain does not exist" in captured.err or "Domain does not exist" in captured.out
+
+
+def test_cli_osint_mode(capsys):
+    from dns_recon.models import InfoGatherResult, IPRecord, SubdomainRecord
+    mock_osint = InfoGatherResult(
+        domain="example.com",
+        timestamp="2026-11-16T12:00:00Z",
+        ips=[IPRecord(ip="93.184.216.34", version="IPv4", provider="Edgecast")],
+        nameservers=["ns1.example.com"],
+        mx_records=["10 mail.example.com"],
+        subdomains=[SubdomainRecord(subdomain="www.example.com", record_type="A", target="93.184.216.34", is_live=True)],
+        detected_host="Edgecast",
+    )
+    with patch("dns_recon.cli.DNSClient.domain_exists", return_value=True):
+        with patch("dns_recon.cli.gather_information", return_value=mock_osint):
+            exit_code = main(["example.com", "--info", "--json"])
+            assert exit_code == 0
+            captured = capsys.readouterr()
+            data = json.loads(captured.out)
+            assert data["domain"] == "example.com"
+            assert data["detected_host"] == "Edgecast"
+            assert len(data["ips"]) == 1

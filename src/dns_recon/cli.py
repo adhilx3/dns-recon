@@ -6,9 +6,17 @@ from pathlib import Path
 from rich.console import Console
 
 from dns_recon import __version__
+from dns_recon.analyzers.osint import gather_information
 from dns_recon.dns_client import DNSClient, DNSLookupError
-from dns_recon.formatters import format_console, format_json, format_markdown
-from dns_recon.scoring import run_full_assessment
+from dns_recon.formatters import (
+    format_console,
+    format_json,
+    format_markdown,
+    format_osint_console,
+    format_osint_json,
+    format_osint_markdown,
+)
+from dns_recon.scoring import normalize_domain, run_full_assessment
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -24,6 +32,18 @@ def build_parser() -> argparse.ArgumentParser:
         "--json",
         action="store_true",
         help="Output results as JSON to stdout",
+    )
+    parser.add_argument(
+        "--info",
+        "--osint",
+        dest="osint",
+        action="store_true",
+        help="Conduct reconnaissance & information gathering (IP, reverse PTR, subdomains)",
+    )
+    parser.add_argument(
+        "--all",
+        action="store_true",
+        help="Run comprehensive scan: Security Audit + OSINT Information Gathering",
     )
     parser.add_argument(
         "-o",
@@ -72,6 +92,47 @@ def main(args: list[str] | None = None) -> int:
     console = Console()
     err_console = Console(stderr=True)
 
+    clean_domain = normalize_domain(parsed.domain)
+
+    # 1. OSINT Mode only
+    if parsed.osint and not parsed.all:
+        try:
+            if not client.domain_exists(clean_domain):
+                raise DNSLookupError(f"Target domain '{clean_domain}' does not exist (NXDOMAIN).")
+            osint_result = gather_information(client, clean_domain)
+        except DNSLookupError as e:
+            if parsed.json:
+                import json
+                print(json.dumps({"error": str(e), "domain": clean_domain}))
+            else:
+                err_console.print(f"[bold red]DNS Lookup Error:[/bold red] {e}")
+            return 1
+        except Exception as e:
+            if parsed.json:
+                import json
+                print(json.dumps({"error": f"Unexpected error: {e}", "domain": clean_domain}))
+            else:
+                err_console.print(f"[bold red]OSINT Failed:[/bold red] {e}")
+            return 1
+
+        if parsed.json:
+            print(format_osint_json(osint_result))
+        else:
+            format_osint_console(osint_result, console=console)
+
+        if parsed.report:
+            try:
+                report_path = Path(parsed.report)
+                report_path.parent.mkdir(parents=True, exist_ok=True)
+                report_path.write_text(format_osint_markdown(osint_result), encoding="utf-8")
+                if not parsed.json:
+                    console.print(f"\n[bold green]Report saved to:[/bold green] {report_path.resolve()}")
+            except Exception as e:
+                err_console.print(f"[bold red]Failed to write report file:[/bold red] {e}")
+
+        return 0
+
+    # 2. Security Audit Mode (or --all)
     try:
         report = run_full_assessment(
             domain=parsed.domain,
@@ -93,16 +154,33 @@ def main(args: list[str] | None = None) -> int:
             err_console.print(f"[bold red]Scan Failed:[/bold red] {e}")
         return 1
 
+    osint_result = None
+    if parsed.all:
+        try:
+            osint_result = gather_information(client, clean_domain)
+        except Exception as e:
+            err_console.print(f"[yellow]Warning: OSINT gathering encountered error:[/yellow] {e}")
+
     if parsed.json:
-        print(format_json(report))
+        out_dict = report.to_dict()
+        if osint_result:
+            out_dict["osint"] = osint_result.to_dict()
+        import json
+        print(json.dumps(out_dict, indent=2))
     else:
         format_console(report, console=console)
+        if osint_result:
+            console.print("\n")
+            format_osint_console(osint_result, console=console)
 
     if parsed.report:
         try:
             report_path = Path(parsed.report)
             report_path.parent.mkdir(parents=True, exist_ok=True)
-            report_path.write_text(format_markdown(report), encoding="utf-8")
+            md_text = format_markdown(report)
+            if osint_result:
+                md_text += "\n\n---\n\n" + format_osint_markdown(osint_result)
+            report_path.write_text(md_text, encoding="utf-8")
             if not parsed.json:
                 console.print(f"\n[bold green]Report saved to:[/bold green] {report_path.resolve()}")
         except Exception as e:

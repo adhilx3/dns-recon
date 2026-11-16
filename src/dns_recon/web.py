@@ -1,5 +1,6 @@
 from __future__ import annotations
 import argparse
+from pathlib import Path
 import sys
 import webbrowser
 from typing import Any
@@ -8,15 +9,18 @@ from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, Response
 import uvicorn
 
+from dns_recon.analyzers.osint import gather_information
 from dns_recon.dns_client import DNSClient, DNSLookupError
-from dns_recon.formatters import format_markdown
-from dns_recon.scoring import run_full_assessment
+from dns_recon.formatters import format_markdown, format_osint_markdown
+from dns_recon.scoring import normalize_domain, run_full_assessment
 
 app = FastAPI(
     title="DNS Recon Web Dashboard",
     description="DNS Health, Security Hygiene & Email Spoofing Reconnaissance Scanner",
-    version="0.1.0",
+    version="2.0.0",
 )
+
+INDEX_FILE = Path(__file__).resolve().parent.parent.parent / "public" / "index.html"
 
 HTML_TEMPLATE = r"""<!DOCTYPE html>
 <html lang="en" class="dark">
@@ -515,6 +519,8 @@ def debug(request: Request) -> dict[str, Any]:
 @app.get("/api/index", response_class=HTMLResponse)
 def index() -> str:
     """Serve the Web Dashboard Single Page Application."""
+    if INDEX_FILE.exists():
+        return INDEX_FILE.read_text(encoding="utf-8")
     return HTML_TEMPLATE
 
 
@@ -536,17 +542,47 @@ def api_scan(
         raise HTTPException(status_code=500, detail=f"Scan error: {e}")
 
 
+@app.get("/api/info-gather")
+@app.get("/api/osint")
+def api_info_gather(
+    domain: str = Query(..., description="Target domain to gather info on"),
+) -> dict[str, Any]:
+    """Execute OSINT reconnaissance (IPs, PTR, Cloud, Subdomains)."""
+    client = DNSClient()
+    clean_domain = normalize_domain(domain)
+
+    if not clean_domain or not client.domain_exists(clean_domain):
+        raise HTTPException(status_code=404, detail=f"Target domain '{clean_domain}' does not exist (NXDOMAIN).")
+
+    try:
+        osint_res = gather_information(client, clean_domain)
+        return osint_res.to_dict()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"OSINT error: {e}")
+
+
 @app.get("/api/report")
-def api_report(domain: str = Query(...)) -> Response:
+def api_report(
+    domain: str = Query(...),
+    type: str = Query("security", description="Report type: 'security' or 'osint'"),
+) -> Response:
     """Generate and download Markdown report."""
     client = DNSClient()
+    clean_domain = normalize_domain(domain)
     try:
-        report = run_full_assessment(domain=domain, client=client)
-        md_content = format_markdown(report)
+        if type == "osint":
+            osint_res = gather_information(client, clean_domain)
+            md_content = format_osint_markdown(osint_res)
+            filename = f"{clean_domain}_osint_recon_report.md"
+        else:
+            report = run_full_assessment(domain=clean_domain, client=client)
+            md_content = format_markdown(report)
+            filename = f"{clean_domain}_dns_security_report.md"
+
         return Response(
             content=md_content,
             media_type="text/markdown",
-            headers={"Content-Disposition": f'attachment; filename="{domain}_dns_security_report.md"'},
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
